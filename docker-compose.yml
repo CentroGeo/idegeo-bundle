@@ -7,6 +7,8 @@ x-common-django: &default-common-django
   restart: unless-stopped
   env_file:
     - .env
+  extra_hosts:
+    - "localhost:host-gateway"
   volumes:
     - statics:/mnt/volumes/statics
     - geoserver-data-dir:/geoserver_data/data
@@ -30,7 +32,7 @@ services:
       test: "curl -m 10 --fail --silent --write-out 'HTTP CODE : %{http_code}\n' --output /dev/null http://django:8000/"
       start_period: 60s
       interval: 60s
-      timeout: 30s
+      timeout: 120s
       retries: 4
     environment:
       - IS_CELERY=False
@@ -81,7 +83,6 @@ services:
       - ${ENABLE_ADMIN_PROXY:+./overrides/nginx/z-frontend-admin.conf:/etc/nginx/sites-enabled/z-frontend-admin.conf:ro}
       - ${ENABLE_APP_PROXY:+./overrides/nginx/z-frontend-app.conf:/etc/nginx/sites-enabled/z-frontend-app.conf:ro}
       - ${ENABLE_IA_PROXY:+./overrides/nginx/z-ia-proxy.conf:/etc/nginx/sites-enabled/z-ia-proxy.conf:ro}
-      # - ${ENABLE_LEVANTAMIENTO_PROXY:+./overrides/nginx/z-levantamiento-proxy.conf:/etc/nginx/sites-enabled/z-levantamiento-proxy.conf:ro}
 
     restart: unless-stopped
     networks:
@@ -254,13 +255,13 @@ services:
       - sigicnetwork
     environment:
       ENABLE_LEVANTAMIENTO_DB: "True"
-      DB_NAME: ${LEVANTAMIENTO_DB_NAME}
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_HOST: ${DATABASE_HOST}
       DB_PORT: ${DATABASE_PORT}
-      IA_USER: ${LEVANTAMIENTO_DB_USER:-iauser}
-      IA_PASSWORD: ${LEVANTAMIENTO_DB_PASSWORD}
+      LEVANTAMIENTO_DB_NAME: ${LEVANTAMIENTO_DB_NAME}
+      LEVANTAMIENTO_DB_USER: ${LEVANTAMIENTO_DB_USER:-iauser}
+      LEVANTAMIENTO_DB_PASSWORD: ${LEVANTAMIENTO_DB_PASSWORD}
     volumes:
       - ./scripts/init_levantamiento_db.sh:/init_levantamiento_db.sh:ro
     entrypoint: [ "/bin/bash", "/init_levantamiento_db.sh" ]
@@ -319,7 +320,7 @@ services:
   # Frontend for admin users
   frontend-admin:
     profiles: ["frontend", "frontend-admin"]
-    image: ghcr.io/centrogeo/idegeo-nuxt-frontend:latest
+    image: ghcr.io/centrogeo/sigic-nuxt-frontend:225d407
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -351,6 +352,10 @@ services:
       NUXT_PUBLIC_ENABLE_CONSULTA: true
       NUXT_PUBLIC_ENABLE_IAA: ${ENABLE_IA_PROXY:-false}
       NUXT_PUBLIC_ENABLE_LEVANTAMIENTO: ${ENABLE_LEVANTAMIENTO_PROXY:-false}
+      NUXT_PUBLIC_ENABLE_ACERCA_DE: true
+      NUXT_PUBLIC_ENABLE_GEOCONTENIDOS: false
+      NUXT_PUBLIC_ENABLE_GEOHISTORIAS: false
+      NUXT_PUBLIC_ENABLE_TABLEROS: false
       KEYCLOAK_CLIENT_ID: ${ADMIN_KEYCLOAK_CLIENT_ID}
       KEYCLOAK_CLIENT_SECRET: ${ADMIN_KEYCLOAK_CLIENT_SECRET}
       NUXT_AUTH_SECRET: ${ADMIN_NUXT_AUTH_SECRET}
@@ -361,7 +366,7 @@ services:
   # Frontend for end users
   frontend-app:
     profiles: ["frontend", "frontend-app"]
-    image: ghcr.io/centrogeo/idegeo-nuxt-frontend:latest
+    image: ghcr.io/centrogeo/sigic-nuxt-frontend:225d407
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -388,11 +393,15 @@ services:
       NUXT_PUBLIC_AUTH_BASE_URL: ${NGINX_BASE_URL}/app/api/auth
       KEYCLOAK_ISSUER: ${NGINX_BASE_URL}/iam/realms/sigic
       NUXT_PUBLIC_ENABLE_AUTH: false
-      NUXT_PUBLIC_ENABLE_CATALOGO_VISTA: false
-      NUXT_PUBLIC_ENABLE_CATALOGO_CARGA: false
+      NUXT_PUBLIC_ENABLE_CATALOGO_VISTA: true
+      NUXT_PUBLIC_ENABLE_CATALOGO_CARGA: true
       NUXT_PUBLIC_ENABLE_CONSULTA: true
       NUXT_PUBLIC_ENABLE_IAA: false
       NUXT_PUBLIC_ENABLE_LEVANTAMIENTO: false
+      NUXT_PUBLIC_ENABLE_ACERCA_DE: true
+      NUXT_PUBLIC_ENABLE_GEOCONTENIDOS: false
+      NUXT_PUBLIC_ENABLE_GEOHISTORIAS: false
+      NUXT_PUBLIC_ENABLE_TABLEROS: false
       KEYCLOAK_CLIENT_ID: ${APP_KEYCLOAK_CLIENT_ID}
       KEYCLOAK_CLIENT_SECRET: ${APP_KEYCLOAK_CLIENT_SECRET}
       NUXT_AUTH_SECRET: ${APP_NUXT_AUTH_SECRET}

@@ -107,7 +107,7 @@ def generate_env_file(args):
 
         enableiaproxy = _jsfile.get("enableiaproxy", args.enableiaproxy)
         _vals_to_replace["enableiaproxy"] = (
-            True if enableiaproxy else ''
+            True if enableiaproxy else False
         )
 
         enablelevantamientoproxy = _jsfile.get("enablelevantamientoproxy", args.enablelevantamientoproxy)
@@ -267,6 +267,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--geonodepwd", help="GeoNode admin password")
     parser.add_argument("--geoserverpwd", help="Geoserver admin password")
+    parser.add_argument("--levantamientodbpwd", help="Geoserver admin password")
     parser.add_argument("--pgpwd", help="PostgreSQL password")
     parser.add_argument("--dbpwd", help="GeoNode DB user password")
     parser.add_argument("--geodbpwd", help="Geodatabase user password")
@@ -330,13 +331,24 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if not args.confirmation:
+    env_path = os.path.join(dir_path, ".env")
+
+    # si no existe .env → generar sin preguntar
+    if not os.path.exists(env_path):
         generate_env_file(args)
+
+    # si existe y se pasó --noinput → sobrescribir sin preguntar
+    elif not args.confirmation:
+        generate_env_file(args)
+
+    # si existe → preguntar
     else:
         overwrite_env = input(
-            "This action will overwrite any existing .env file. Do you wish to continue? (y/n)"
-        )
-        if overwrite_env not in ["y", "n"]:
-            logger.error("Please enter a valid response")
+            "Esta acción puede sobreescribir el archivo .env existente. Deseas sobreescribirlo? (y/N)"
+        ).strip().lower()
+
+        # ENTER vacío = "n"
         if overwrite_env == "y":
             generate_env_file(args)
+        else:
+            logger.info("Se conserva el .env existente")
